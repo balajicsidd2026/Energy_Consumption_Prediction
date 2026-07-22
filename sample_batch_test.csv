@@ -1,0 +1,21 @@
+Operation_Date,Year,Month,Quarter,Day_of_Week,Weekend,Peak_Season,Warehouse_ID,Warehouse_Type,Warehouse_Area_sq_m,Temperature_C,Humidity_Percentage,Weather_Condition,Warehouse_Occupancy_Percentage,Total_Shipments,Total_Cargo_Weight_kg,Total_Cargo_Volume_m3,Number_of_Flights,Forklift_Operating_Hours,Conveyor_Operating_Hours,HVAC_Operating_Hours,Lighting_Operating_Hours,Equipment_Utilization_Percentage,Staff_Count,Staff_Availability_Percentage
+2025-06-08,2025,6,2,Sunday,No,Yes,VW001,Valuable,4419,38.1,43,Hot,24,19,145.19,0.97,1,0.9,0.3,4.3,9.0,17.6,9,95.1
+2022-07-29,2022,7,3,Friday,Yes,Yes,LA001,Live Animal,11771,38.6,56,Cloudy,73,41,1844.66,33.8,1,2.4,0.0,7.7,11.2,36.7,14,98.5
+2024-06-08,2024,6,2,Saturday,Yes,Yes,WH006,General,20006,41.6,40,Hot,74,290,31408.22,130.58,12,8.1,4.8,8.6,11.1,66.0,65,91.7
+2025-02-14,2025,2,1,Friday,Yes,No,WH003,General,18204,29.7,56,Sunny,66,208,24365.74,102.76,11,6.1,3.7,4.2,10.4,57.5,68,86.8
+2022-09-09,2022,9,3,Friday,Yes,No,DG001,Dangerous Goods,11016,36.7,68,Sunny,80,61,4953.85,13.55,2,2.5,0.5,6.2,11.3,44.7,21,88.2
+2024-08-04,2024,8,3,Sunday,No,No,DG001,Dangerous Goods,11016,38.2,62,Cloudy,57,51,3049.06,9.39,2,2.3,0.1,7.2,10.7,28.9,19,89.8
+2025-04-12,2025,4,2,Saturday,Yes,No,LA001,Live Animal,11771,29.6,52,Sunny,44,8,224.53,3.8,1,0.7,0.0,4.6,9.8,20.9,18,96.5
+2025-07-07,2025,7,3,Monday,No,Yes,WH004,General,24074,38.3,48,Cloudy,86,233,26022.12,129.04,12,7.0,3.8,7.2,11.9,62.7,68,91.9
+2023-12-27,2023,12,4,Wednesday,No,Yes,CW001,Cold,13828,27.7,74,Cloudy,79,212,21303.56,84.07,11,6.2,2.2,10.4,10.8,62.3,49,98.6
+2024-03-08,2024,3,1,Friday,Yes,No,CW001,Cold,13828,29.1,66,Sunny,82,160,14302.7,51.97,9,5.3,1.5,10.5,11.3,54.3,37,93.0
+2024-05-21,2024,5,2,Tuesday,No,Yes,CW001,Cold,13828,37.7,55,Sunny,75,171,16120.72,63.63,8,5.0,2.0,12.1,10.6,49.5,48,96.5
+2025-03-05,2025,3,1,Wednesday,No,No,CW002,Cold,13143,29.3,71,Cloudy,91,252,25565.81,115.9,10,7.8,3.0,10.0,11.9,71.3,55,98.6
+2025-04-03,2025,4,2,Thursday,No,No,DG001,Dangerous Goods,11016,32.7,71,Sunny,43,53,3916.17,12.16,2,1.5,0.1,5.5,9.9,27.3,21,90.0
+2024-06-15,2024,6,2,Saturday,Yes,Yes,CW002,Cold,13143,40.2,45,Hot,75,188,15046.93,62.19,11,5.4,2.2,12.4,11.3,51.0,37,96.6
+2025-05-30,2025,5,2,Friday,Yes,Yes,WH001,General,23238,35.2,47,Sunny,92,309,26514.41,169.1,13,9.1,5.1,5.8,12.1,77.6,55,96.2
+2025-01-13,2025,1,1,Monday,No,No,EX001,Express,14467,32.4,43,Dust Storm,91,298,5546.2,55.6,15,8.8,10.6,5.5,11.7,88.9,53,87.0
+2023-01-29,2023,1,1,Sunday,No,No,VW001,Valuable,4419,32.2,52,Sunny,37,19,191.14,1.19,1,1.0,0.2,3.4,9.5,16.4,9,85.6
+2022-07-13,2022,7,3,Wednesday,No,Yes,EX001,Express,14467,35.6,61,Cloudy,67,252,2913.81,21.72,16,7.1,9.1,6.2,11.1,64.3,46,94.5
+2023-01-01,2023,1,1,Sunday,No,No,VW001,Valuable,4419,28.3,78,Fog,51,17,157.61,1.22,1,1.6,0.3,2.5,10.3,26.7,12,90.5
+2022-09-02,2022,9,3,Friday,Yes,No,DG001,Dangerous Goods,11016,37.5,65,Sunny,68,51,3290.18,9.05,3,2.2,0.0,7.0,10.7,39.6,24,87.1

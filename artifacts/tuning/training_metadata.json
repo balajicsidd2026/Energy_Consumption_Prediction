@@ -1,0 +1,21 @@
+{
+  "stage": "autogluon_training",
+  "target_column": "Energy_Consumption_kWh",
+  "problem_type": "regression",
+  "eval_metric": "r2",
+  "time_limit_s": 180,
+  "actual_time_s": 255.35,
+  "presets": "medium_quality",
+  "best_model": "WeightedEnsemble_L2",
+  "best_val_score": 0.9934977108530405,
+  "n_models_trained": 5,
+  "predictor_path": "C:\\Users\\BalajiChitrarasu\\Desktop\\Energy Consumption Prediction\\artifacts/models\\autogluon_predictor",
+  "train_shape": [
+    12272,
+    25
+  ],
+  "val_shape": [
+    2630,
+    25
+  ]
+}

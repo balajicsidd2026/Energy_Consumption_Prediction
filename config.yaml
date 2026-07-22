@@ -1,0 +1,53 @@
+mlflow:
+  tracking_uri: "https://mlflow.siddhanproducts.com"
+  experiment_name: "Energy_Consumption_Prediction"
+
+paths:
+  raw_data_file: "energy_consumption_prediction_dataset.csv"
+  data_dir: "data"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  artifacts_dir: "artifacts"
+  models_dir: "artifacts/models"
+
+data_split:
+  # Chronological split (NOT random). Rows are sorted by `date_column`
+  # before splitting so validation/test always come after training in time.
+  strategy: "chronological"
+  date_column: "Operation_Date"
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_state: 42
+
+data_schema:
+  target_column: "Energy_Consumption_kWh"
+  # Columns to explicitly drop (AutoGluon handles the rest automatically)
+  # No leakage/identifier columns in this dataset — Year/Month/Quarter are
+  # already provided and Warehouse_ID is a legitimate low-cardinality feature.
+  drop_columns: []
+
+feature_engineering:
+  # Operation_Date is used only to sort chronologically for the split.
+  # Year / Month / Quarter / Day_of_Week / Weekend already exist in the
+  # raw dataset, so no calendar-derivation is needed here.
+  date_column: "Operation_Date"
+  derived_columns: []
+
+autogluon:
+  # Fixed time budget in seconds
+  time_limit: 300
+  # Presets: best_quality | high_quality | good_quality | medium_quality
+  presets: "high_quality"
+  # verbosity: 0=silent, 1=warnings, 2=info, 3=debug
+  verbosity: 2
+  # Number of folds for bagging (null = AutoGluon decides)
+  num_bag_folds: 3
+  # Number of stack levels (null = AutoGluon decides)
+  num_stack_levels: null
+
+evaluation:
+  # Run SHAP via AutoGluon's built-in feature importance
+  run_feature_importance: true
+  # Number of rows to use for feature importance (null = all)
+  feature_importance_subsample: 2000

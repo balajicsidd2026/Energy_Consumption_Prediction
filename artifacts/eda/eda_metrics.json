@@ -1,0 +1,16 @@
+{
+  "stage": "eda",
+  "target_column": "Energy_Consumption_kWh",
+  "problem_type": "regression",
+  "n_rows": 12272,
+  "n_numeric_features": 18,
+  "n_categorical_features": 7,
+  "dropped_id_cols": [],
+  "total_missing": 0,
+  "total_outliers_iqr": 1073,
+  "high_skew_features": [],
+  "target_mean": 110.56136163624511,
+  "target_std": 36.97500329781632,
+  "target_median": 91.58,
+  "target_skew": 1.081869899496276
+}

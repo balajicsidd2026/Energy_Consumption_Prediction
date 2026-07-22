@@ -1,0 +1,26 @@
+{
+  "stage": "data_preparation",
+  "target_column": "Energy_Consumption_kWh",
+  "problem_type": "regression",
+  "preprocessing_engine": "AutoGluon (internal)",
+  "dropped_cols": [
+    "Lighting_Operating_Hours"
+  ],
+  "train_shape": [
+    12272,
+    25
+  ],
+  "val_shape": [
+    2630,
+    25
+  ],
+  "test_shape": [
+    2630,
+    25
+  ],
+  "n_numeric_features": 17,
+  "n_categorical_features": 7,
+  "total_missing": 0,
+  "high_skew_features": [],
+  "note": "No manual encoding/scaling/imputation performed. AutoGluon handles all preprocessing internally per model."
+}

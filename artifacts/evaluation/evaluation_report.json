@@ -1,0 +1,18 @@
+{
+  "stage": "evaluation",
+  "best_model": "WeightedEnsemble_L2",
+  "problem_type": "regression",
+  "eval_metric": "r2",
+  "target_col": "Energy_Consumption_kWh",
+  "test_rows": 2630,
+  "metrics": {
+    "rmse": 2.9038905548752645,
+    "mae": 2.5005318348235503,
+    "mse": 8.432580354693771,
+    "r2_score": 0.9938908442779799,
+    "explained_variance": 0.9939080615320065,
+    "mape": 2.462940397664533,
+    "adjusted_r2": 0.9938345603097156
+  },
+  "predictor_path": "C:\\Users\\BalajiChitrarasu\\Desktop\\Energy Consumption Prediction\\artifacts/models\\autogluon_predictor"
+}
