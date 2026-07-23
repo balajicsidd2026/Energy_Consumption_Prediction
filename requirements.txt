@@ -1,25 +1,18 @@
 # ── Core pipeline ─────────────────────────────────────────────────────────────
-pandas>=2.0,<2.3
-# IMPORTANT: pinned <2.0 — the trained AutoGluon model was pickled under
-# NumPy 1.x. NumPy 2.0 reorganized the internal random/BitGenerator C
-# extension layout, so unpickling a NumPy-1.x RandomState/BitGenerator under
-# NumPy 2.x raises:
-#   ValueError: <class 'numpy.random._mt19937.MT19937'> is not a known
-#   BitGenerator module.
-# Keeping numpy<2.0 here (matching the training environment) avoids that.
-numpy>=1.26,<2.0
-scikit-learn>=1.4,<1.6
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.4
 pyyaml>=6.0
 mlflow>=2.12
 
 # ── AutoGluon (core ML engine) ────────────────────────────────────────────────
 # Installs AutoGluon with tabular support + all model backends
+# PINNED to the exact version the predictor was trained/saved with.
+# AutoGluon predictors are NOT forward/backward compatible across versions —
+# check_saved_predictor_version() raises AssertionError on any mismatch.
+# Verify with: pip show autogluon.tabular  (or check the trained predictor's
+# artifacts/models/<predictor_dir>/version.txt file)
 autogluon.tabular[all]==1.5.0
-catboost
-lightgbm
-xgboost
-torch
-fastai
 
 # ── Visualization ─────────────────────────────────────────────────────────────
 matplotlib>=3.7
