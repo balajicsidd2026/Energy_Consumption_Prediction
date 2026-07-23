@@ -501,7 +501,18 @@ with tab_pred:
                 input_df = pd.DataFrame(input_data)
 
                 with st.spinner("Estimating energy consumption..."):
-                    predicted_kwh = float(predictor.predict(input_df).values[0])
+                    try:
+                        predicted_kwh = float(predictor.predict(input_df).values[0])
+                    except ValueError as e:
+                        if "BitGenerator" in str(e):
+                            st.error(
+                                "**Environment mismatch error.** The deployed NumPy version is "
+                                "incompatible with the NumPy version used to train this model.\n\n"
+                                "Fix: pin `numpy<2.0` (matching the training environment) in "
+                                "`requirements.txt` and redeploy / clear the Streamlit Cloud cache."
+                            )
+                            st.stop()
+                        raise
 
                 col_res1, col_res2, col_res3 = st.columns(3)
                 col_res1.metric("Predicted Energy Consumption", f"{predicted_kwh:.2f} kWh")
@@ -572,7 +583,19 @@ with tab_pred:
                                 for col in df_pred.select_dtypes(include=["object"]).columns:
                                     df_pred[col] = df_pred[col].astype(str).str.strip()
 
-                                preds = predictor.predict(df_pred).values
+                                try:
+                                    preds = predictor.predict(df_pred).values
+                                except ValueError as e:
+                                    if "BitGenerator" in str(e):
+                                        st.error(
+                                            "**Environment mismatch error.** The deployed NumPy version "
+                                            "is incompatible with the NumPy version used to train this "
+                                            "model.\n\nFix: pin `numpy<2.0` (matching the training "
+                                            "environment) in `requirements.txt` and redeploy / clear the "
+                                            "Streamlit Cloud cache."
+                                        )
+                                        st.stop()
+                                    raise
                                 df_pred["Predicted_Energy_Consumption_kWh"] = np.round(preds, 2)
                                 
                                 st.session_state["batch_results"] = df_pred
