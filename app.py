@@ -446,6 +446,8 @@ with tab_pred:
                     "Month": [dt.month],
                     "Year": [dt.year],
                     "Quarter": [dt.quarter],
+                    "Week_Number": [int(dt.isocalendar().week)],
+                    "Is_Weekend": [int(dt.dayofweek >= 5)],
                     "Peak_Season": [peak_season],
                     "Warehouse_Zone": [wh_zone],
                     "Warehouse_Occupancy_Percentage": [float(occupancy)],
@@ -515,7 +517,16 @@ with tab_pred:
                         if st.button("Run Batch Prediction", type="primary", use_container_width=True):
                             with st.spinner("Estimating waste generation for all rows..."):
                                 df_pred = df_upload.copy()
-                                
+
+                                # Derive Week_Number / Is_Weekend from Date if not already
+                                # supplied — these are engineered features the model was
+                                # trained on (see src/data_ingestion.py).
+                                _dt = pd.to_datetime(df_pred["Date"], errors="coerce")
+                                if "Week_Number" not in df_pred.columns:
+                                    df_pred["Week_Number"] = _dt.dt.isocalendar().week.astype(int)
+                                if "Is_Weekend" not in df_pred.columns:
+                                    df_pred["Is_Weekend"] = (_dt.dt.dayofweek >= 5).astype(int)
+
                                 num_cols = ["Employee_Count", "Total_AWB", "Total_Shipments",
                                             "Wooden_Pallets_Handled", "Carton_Boxes_Handled", "Damaged_Cargo_Count"]
                                 for col in num_cols:
