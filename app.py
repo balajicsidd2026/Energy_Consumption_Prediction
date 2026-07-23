@@ -19,50 +19,29 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # ── Page Configuration ────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Energy Consumption Predictor",
+    page_title="Waste Generation Predictor",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Define dataset metadata for choices
 METADATA = {
-  "Warehouse_ID":       ["CW001", "CW002", "DG001", "EX001", "LA001", "VW001",
-                          "WH001", "WH002", "WH003", "WH004", "WH005", "WH006"],
-  "Warehouse_Type":     ["Cold", "Dangerous Goods", "Express", "General", "Live Animal", "Valuable"],
-  "Weather_Condition":  ["Cloudy", "Dust Storm", "Fog", "Hot", "Rain", "Sunny"],
   "Day_of_Week":        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-  "Weekend":            ["No", "Yes"],
   "Peak_Season":        ["No", "Yes"],
-  "Warehouse_Area_sq_m":               {"min": 4419,  "max": 24074, "default": 16336},
-  "Temperature_C":                     {"min": 22.5,  "max": 48.2,  "default": 35.2},
-  "Humidity_Percentage":               {"min": 19,    "max": 86,    "default": 56},
-  "Warehouse_Occupancy_Percentage":    {"min": 20,    "max": 99,    "default": 74},
-  "Total_Shipments":                   {"min": 4,     "max": 473,   "default": 213},
-  "Total_Cargo_Weight_kg":             {"min": 25.98, "max": 57265.17, "default": 19734.11},
-  "Total_Cargo_Volume_m3":             {"min": 0.14,  "max": 363.22,   "default": 89.36},
-  "Number_of_Flights":                 {"min": 1,     "max": 30,    "default": 10},
-  "Forklift_Operating_Hours":          {"min": 0.0,   "max": 12.0,  "default": 6.6},
-  "Conveyor_Operating_Hours":          {"min": 0.0,   "max": 14.0,  "default": 3.6},
-  "HVAC_Operating_Hours":              {"min": 0.0,   "max": 14.4,  "default": 6.4},
-  "Lighting_Operating_Hours":          {"min": 8.0,   "max": 12.5,  "default": 11.0},
-  "Equipment_Utilization_Percentage":  {"min": 10.0,  "max": 95.0,  "default": 60.5},
-  "Staff_Count":                       {"min": 8,     "max": 85,    "default": 51},
-  "Staff_Availability_Percentage":     {"min": 85.0,  "max": 99.0,  "default": 92.0},
-}
-
-WAREHOUSE_MAPPING = {
-    "CW001": ("Cold", 13828),
-    "CW002": ("Cold", 13143),
-    "DG001": ("Dangerous Goods", 11016),
-    "EX001": ("Express", 14467),
-    "LA001": ("Live Animal", 11771),
-    "VW001": ("Valuable", 4419),
-    "WH001": ("General", 23238),
-    "WH002": ("General", 18912),
-    "WH003": ("General", 18204),
-    "WH004": ("General", 24074),
-    "WH005": ("General", 20253),
-    "WH006": ("General", 20006),
+  "Warehouse_Zone":     ["General Cargo Warehouse", "Cold Storage Warehouse", "Dangerous Goods Warehouse",
+                          "Valuable Cargo Warehouse", "Express Cargo Warehouse", "Live Animal Warehouse"],
+  "Warehouse_Occupancy_Percentage":  {"min": 21.64,  "max": 100.0,   "default": 62.52},
+  "Employee_Count":                  {"min": 6,      "max": 45,      "default": 18},
+  "Total_AWB":                       {"min": 10,     "max": 500,     "default": 132},
+  "Total_Shipments":                 {"min": 11,     "max": 670,     "default": 158},
+  "Total_Cargo_Weight_kg":           {"min": 1903.25, "max": 81412.23, "default": 18941.46},
+  "Total_Cargo_Volume_cbm":          {"min": 7.97,   "max": 370.06,  "default": 87.17},
+  "Wooden_Pallets_Handled":          {"min": 1,      "max": 262,     "default": 39},
+  "Plastic_Wrapping_Used_kg":        {"min": 2.22,   "max": 324.59,  "default": 65.65},
+  "Carton_Boxes_Handled":            {"min": 5,      "max": 524,     "default": 88},
+  "Stretch_Film_Used_kg":            {"min": 1.1,    "max": 111.86,  "default": 34.26},
+  "Damaged_Cargo_Count":             {"min": 0,      "max": 19,      "default": 5},
+  "Recyclable_Waste_Percentage":     {"min": 35.02,  "max": 89.97,   "default": 65.84},
 }
 
 # ── Helper Functions ─────────────────────────────────────────────────────────
@@ -70,21 +49,33 @@ WAREHOUSE_MAPPING = {
 @st.cache_resource(show_spinner=False)
 def load_predictor(path: str):
     """Load the trained AutoGluon TabularPredictor."""
-    return TabularPredictor.load(path)
+    try:
+        return TabularPredictor.load(path)
+    except AssertionError as e:
+        import autogluon.tabular as _agt
+        st.error(
+            "**AutoGluon version mismatch.**\n\n"
+            f"Installed AutoGluon version: `{_agt.__version__ if hasattr(_agt, '__version__') else 'unknown'}`\n\n"
+            "The saved predictor was trained with a different AutoGluon version. "
+            "Pin `autogluon.tabular` in `requirements.txt` to the exact version "
+            "listed in `artifacts/models/<predictor_dir>/version.txt`, then redeploy.\n\n"
+            f"Original error: {e}"
+        )
+        st.stop()
 
 @st.cache_data
 def load_sample_operations():
     """Load and cache the first 10,000 warehouse-day records from the dataset."""
-    csv_path = "energy_consumption_prediction_dataset.csv"
+    csv_path = "waste_generation_prediction_dataset.csv"
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path, nrows=10000)
-        df["display_label"] = df["Warehouse_ID"].astype(str) + " — " + df["Operation_Date"].astype(str)
+        df["display_label"] = df["Warehouse_Zone"].astype(str) + " — " + df["Date"].astype(str)
         return df
     return None
 
 @st.cache_data
 def load_full_dataset():
-    csv_path = "energy_consumption_prediction_dataset.csv"
+    csv_path = "waste_generation_prediction_dataset.csv"
     if os.path.exists(csv_path):
         return pd.read_csv(csv_path)
     return None
@@ -94,27 +85,21 @@ df_samples = load_sample_operations()
 # Initialize session state variables with standard defaults if not present
 def init_session_state():
     defaults = {
-        "Operation_Date": datetime.date.today(),
-        "Warehouse_ID": "WH001",
-        "Warehouse_Type": "General",
-        "Warehouse_Area_sq_m": 16336,
-        "Temperature_C": 35.2,
-        "Humidity_Percentage": 56,
-        "Weather_Condition": "Sunny",
-        "Warehouse_Occupancy_Percentage": 74,
-        "Total_Shipments": 213,
-        "Total_Cargo_Weight_kg": 19734.11,
-        "Total_Cargo_Volume_m3": 89.36,
-        "Number_of_Flights": 10,
-        "Forklift_Operating_Hours": 6.6,
-        "Conveyor_Operating_Hours": 3.6,
-        "HVAC_Operating_Hours": 6.4,
-        "Lighting_Operating_Hours": 24.0,
-        "Equipment_Utilization_Percentage": 60.5,
-        "Staff_Count": 51,
-        "Staff_Availability_Percentage": 92.0,
+        "Date": datetime.date.today(),
+        "Warehouse_Zone": "General Cargo Warehouse",
+        "Warehouse_Occupancy_Percentage": 62.52,
+        "Employee_Count": 18,
+        "Total_AWB": 132,
+        "Total_Shipments": 158,
+        "Total_Cargo_Weight_kg": 18941.46,
+        "Total_Cargo_Volume_cbm": 87.17,
+        "Wooden_Pallets_Handled": 39,
+        "Plastic_Wrapping_Used_kg": 65.65,
+        "Carton_Boxes_Handled": 88,
+        "Stretch_Film_Used_kg": 34.26,
+        "Damaged_Cargo_Count": 5,
+        "Recyclable_Waste_Percentage": 65.84,
         "Day_of_Week": "Monday",
-        "Weekend": "No",
         "Peak_Season": "No",
     }
     for k, v in defaults.items():
@@ -144,40 +129,33 @@ def on_operation_change():
                 return default
 
             # Explicitly extract every field from the fetched row
-            st.session_state.Warehouse_ID                      = _get("Warehouse_ID", "WH001", "str")
-            st.session_state.Warehouse_Type                    = _get("Warehouse_Type", "General", "str")
-            st.session_state.Warehouse_Area_sq_m               = _get("Warehouse_Area_sq_m", 16336, "int")
-            st.session_state.Temperature_C                     = _get("Temperature_C", 35.2, "float")
-            st.session_state.Humidity_Percentage               = _get("Humidity_Percentage", 56, "int")
-            st.session_state.Weather_Condition                 = _get("Weather_Condition", "Sunny", "str")
-            st.session_state.Warehouse_Occupancy_Percentage    = _get("Warehouse_Occupancy_Percentage", 74, "int")
-            st.session_state.Total_Shipments                   = _get("Total_Shipments", 213, "int")
-            st.session_state.Total_Cargo_Weight_kg             = _get("Total_Cargo_Weight_kg", 19734.11, "float")
-            st.session_state.Total_Cargo_Volume_m3             = _get("Total_Cargo_Volume_m3", 89.36, "float")
-            st.session_state.Number_of_Flights                 = _get("Number_of_Flights", 10, "int")
-            st.session_state.Forklift_Operating_Hours          = _get("Forklift_Operating_Hours", 6.6, "float")
-            st.session_state.Conveyor_Operating_Hours          = _get("Conveyor_Operating_Hours", 3.6, "float")
-            st.session_state.HVAC_Operating_Hours              = _get("HVAC_Operating_Hours", 6.4, "float")
-            st.session_state.Lighting_Operating_Hours          = _get("Lighting_Operating_Hours", 11.0, "float")
-            st.session_state.Equipment_Utilization_Percentage  = _get("Equipment_Utilization_Percentage", 60.5, "float")
-            st.session_state.Staff_Count                       = _get("Staff_Count", 51, "int")
-            st.session_state.Staff_Availability_Percentage     = _get("Staff_Availability_Percentage", 92.0, "float")
-            st.session_state.Day_of_Week                       = _get("Day_of_Week", "Monday", "str")
-            st.session_state.Weekend                           = _get("Weekend", "No", "str")
-            st.session_state.Peak_Season                       = _get("Peak_Season", "No", "str")
+            st.session_state.Warehouse_Zone                    = _get("Warehouse_Zone", "General Cargo Warehouse", "str")
+            st.session_state.Warehouse_Occupancy_Percentage    = _get("Warehouse_Occupancy_Percentage", 62.52, "float")
+            st.session_state.Employee_Count                    = _get("Employee_Count", 18, "int")
+            st.session_state.Total_AWB                         = _get("Total_AWB", 132, "int")
+            st.session_state.Total_Shipments                   = _get("Total_Shipments", 158, "int")
+            st.session_state.Total_Cargo_Weight_kg              = _get("Total_Cargo_Weight_kg", 18941.46, "float")
+            st.session_state.Total_Cargo_Volume_cbm             = _get("Total_Cargo_Volume_cbm", 87.17, "float")
+            st.session_state.Wooden_Pallets_Handled             = _get("Wooden_Pallets_Handled", 39, "int")
+            st.session_state.Plastic_Wrapping_Used_kg           = _get("Plastic_Wrapping_Used_kg", 65.65, "float")
+            st.session_state.Carton_Boxes_Handled               = _get("Carton_Boxes_Handled", 88, "int")
+            st.session_state.Stretch_Film_Used_kg               = _get("Stretch_Film_Used_kg", 34.26, "float")
+            st.session_state.Damaged_Cargo_Count                = _get("Damaged_Cargo_Count", 5, "int")
+            st.session_state.Recyclable_Waste_Percentage        = _get("Recyclable_Waste_Percentage", 65.84, "float")
+            st.session_state.Day_of_Week                        = _get("Day_of_Week", "Monday", "str")
+            st.session_state.Peak_Season                        = _get("Peak_Season", "No", "str")
 
-            raw_date = _get("Operation_Date", None, "str")
+            raw_date = _get("Date", None, "str")
             if raw_date:
                 try:
-                    st.session_state.Operation_Date = pd.to_datetime(raw_date).date()
+                    st.session_state.Date = pd.to_datetime(raw_date).date()
                 except Exception:
                     pass
 
-            for k in ["Warehouse_Area_sq_m", "Temperature_C", "Humidity_Percentage",
-                      "Warehouse_Occupancy_Percentage", "Total_Shipments", "Total_Cargo_Weight_kg",
-                      "Total_Cargo_Volume_m3", "Number_of_Flights", "Forklift_Operating_Hours",
-                      "Conveyor_Operating_Hours", "HVAC_Operating_Hours", "Lighting_Operating_Hours",
-                      "Equipment_Utilization_Percentage", "Staff_Count", "Staff_Availability_Percentage"]:
+            for k in ["Warehouse_Occupancy_Percentage", "Employee_Count", "Total_AWB", "Total_Shipments",
+                      "Total_Cargo_Weight_kg", "Total_Cargo_Volume_cbm", "Wooden_Pallets_Handled",
+                      "Plastic_Wrapping_Used_kg", "Carton_Boxes_Handled", "Stretch_Film_Used_kg",
+                      "Damaged_Cargo_Count", "Recyclable_Waste_Percentage"]:
                 st.session_state[f"{k}_num"] = st.session_state[k]
 
 # ── Custom CSS for Premium UI ────────────────────────────────────────────────
@@ -283,7 +261,7 @@ LEADERBOARD_PATH = "artifacts/evaluation/final_leaderboard.csv"
 FEAT_IMP_PATH = "artifacts/evaluation/feature_importance.csv"
 
 # ── Page Header ───────────────────────────────────────────────────────────────
-st.title("Energy Consumption Prediction")
+st.title("Waste Generation Prediction")
 
 # ── Main Tabbed Interface ─────────────────────────────────────────────────────
 tab_overview, tab_pred= st.tabs(
@@ -296,29 +274,31 @@ with tab_overview:
     <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem;">
         <div class="info-card">
             <div class="info-label">Domain</div>
-            <div class="info-value">Airport Cargo Operations</div>
+            <div class="info-value">Airport Cargo Warehouse Sustainability</div>
         </div>
         <div class="info-card">
             <div class="info-label">User Type</div>
-            <div class="info-value">Facilities / Energy Manager</div>
+            <div class="info-value">Warehouse / Sustainability Manager</div>
         </div>
         <div class="info-card">
             <div class="info-label">Target Variable</div>
-            <div class="info-value">Energy Consumption (kWh)</div>
+            <div class="info-value">Waste Generated (kg)</div>
         </div>
     </div>
     
     <div class="info-box" style="margin-bottom: 1.5rem;">
         <div class="info-header">Use Case Overview</div>
         <div class="info-text">
-            The Energy Consumption Prediction platform forecasts the daily electricity usage of
-            each cargo warehouse at King Abdulaziz International Airport (Jeddah), operated by
-            SAL Saudi Logistics Services. Using operational drivers — warehouse type and area,
-            ambient temperature and weather, occupancy, shipment and flight volumes, equipment
-            operating hours (forklifts, conveyors, HVAC, lighting), staffing levels, and
-            seasonality — the model estimates expected energy draw per warehouse per day. This
-            enables facilities teams to plan capacity, flag anomalous consumption, and identify
-            efficiency opportunities across the cargo handling network.
+            The Waste Generation Prediction platform forecasts the daily waste generated inside
+            each cargo warehouse at King Abdulaziz International Airport (Jeddah). Using
+            operational drivers — warehouse zone, occupancy, staffing, shipment and cargo
+            volumes, packaging material usage (wooden pallets, plastic wrapping, carton boxes,
+            stretch film), damaged cargo counts, recyclable-waste share, and seasonality — the
+            model estimates expected warehouse waste per day. This considers warehouse
+            operations only, and excludes passenger terminal, aircraft, catering, external
+            transportation, and office waste. This enables warehouse and sustainability teams
+            to plan waste management capacity, flag abnormal generation, and identify recycling
+            opportunities across the cargo handling network.
         </div>
     </div>
     
@@ -326,23 +306,23 @@ with tab_overview:
         <div class="info-box" style="flex: 1;">
             <div class="info-header">Business Objectives</div>
                 <ul class="info-list">
-                <li>Forecast warehouse-level energy consumption accurately</li>
-                <li>Identify high-consumption drivers (HVAC, occupancy, weather)</li>
-                <li>Support energy budgeting and sustainability reporting</li>
-                <li>Detect abnormal consumption patterns early</li>
-                <li>Optimize equipment scheduling and staffing</li>
-                <li>Reduce operational energy costs</li>
+                <li>Forecast warehouse-level waste generation accurately</li>
+                <li>Identify high-waste drivers (packaging material usage, cargo volume)</li>
+                <li>Support waste budgeting and sustainability reporting</li>
+                <li>Detect abnormal waste generation patterns early</li>
+                <li>Optimize packaging material usage and recycling programs</li>
+                <li>Reduce operational waste disposal costs</li>
             </ul>
         </div>
         <div class="info-box" style="flex: 1;">
             <div class="info-header">Key Benefits</div>
             <ul class="info-list">
-                <li>Data-driven energy budgeting per warehouse</li>
-                <li>Early detection of inefficient operations</li>
-                <li>Better alignment of staffing/equipment with demand</li>
-                <li>Lower energy costs and carbon footprint</li>
+                <li>Data-driven waste budgeting per warehouse zone</li>
+                <li>Early detection of inefficient packaging practices</li>
+                <li>Better alignment of recycling programs with demand</li>
+                <li>Lower waste disposal costs and environmental footprint</li>
                 <li>Improved sustainability reporting accuracy</li>
-                <li>Actionable feature-level insights for facilities teams</li>
+                <li>Actionable feature-level insights for warehouse teams</li>
             </ul>
         </div>
     </div>
@@ -385,139 +365,111 @@ with tab_pred:
             col1, col2 = st.columns(2)
 
             with col1:
-                op_date = st.date_input("Operation Date", value=st.session_state.Operation_Date,
-                                         disabled=is_disabled, key="Operation_Date")
+                op_date = st.date_input("Operation Date", value=st.session_state.Date,
+                                         disabled=is_disabled, key="Date")
                 if inf_mode == "Manual Entry" and op_date is not None:
                     op_dt = pd.to_datetime(op_date)
                     st.session_state.Day_of_Week = op_dt.strftime("%A")
-                    st.session_state.Weekend = "Yes" if st.session_state.Day_of_Week in ["Friday", "Saturday"] else "No"
                     st.session_state.Peak_Season = "Yes" if op_dt.month in [5, 6, 7, 12] else "No"
-                wh_id = st.selectbox("Warehouse ID", METADATA["Warehouse_ID"],
-                    index=METADATA["Warehouse_ID"].index(st.session_state.Warehouse_ID) if st.session_state.Warehouse_ID in METADATA["Warehouse_ID"] else 0,
-                    disabled=is_disabled, key="Warehouse_ID")
-                if inf_mode == "Manual Entry" and wh_id in WAREHOUSE_MAPPING:
-                    derived_type, derived_area = WAREHOUSE_MAPPING[wh_id]
-                    st.session_state.Warehouse_Type = derived_type
-                    st.session_state.Warehouse_Area_sq_m = derived_area
-                
-                wh_type = st.selectbox("Warehouse Type", METADATA["Warehouse_Type"],
-                    index=METADATA["Warehouse_Type"].index(st.session_state.Warehouse_Type) if st.session_state.Warehouse_Type in METADATA["Warehouse_Type"] else 0,
-                    disabled=True)
-                wh_area = st.number_input("Warehouse Area (sq m)",
-                    min_value=int(METADATA["Warehouse_Area_sq_m"]["min"]), max_value=int(METADATA["Warehouse_Area_sq_m"]["max"]),
-                    value=int(st.session_state.Warehouse_Area_sq_m), step=100, disabled=True)
-                st.session_state.Warehouse_Area_sq_m = wh_area
-                temp = st.number_input("Temperature (°C)",
-                    min_value=float(METADATA["Temperature_C"]["min"]), max_value=float(METADATA["Temperature_C"]["max"]),
-                    value=float(st.session_state.Temperature_C), step=0.5, disabled=is_disabled, key="Temperature_C_num")
-                st.session_state.Temperature_C = temp
-                
-                weather = st.selectbox("Weather Condition", METADATA["Weather_Condition"],
-                    index=METADATA["Weather_Condition"].index(st.session_state.Weather_Condition) if st.session_state.Weather_Condition in METADATA["Weather_Condition"] else 0,
-                    disabled=is_disabled, key="Weather_Condition")
+                wh_zone = st.selectbox("Warehouse Zone", METADATA["Warehouse_Zone"],
+                    index=METADATA["Warehouse_Zone"].index(st.session_state.Warehouse_Zone) if st.session_state.Warehouse_Zone in METADATA["Warehouse_Zone"] else 0,
+                    disabled=is_disabled, key="Warehouse_Zone")
 
-                humidity = st.slider("Humidity (%)", int(METADATA["Humidity_Percentage"]["min"]), int(METADATA["Humidity_Percentage"]["max"]),
-                    value=int(st.session_state.Humidity_Percentage), disabled=is_disabled, key="Humidity_Percentage_num")
-                st.session_state.Humidity_Percentage = humidity
-
-                occupancy = st.slider("Warehouse Occupancy (%)", int(METADATA["Warehouse_Occupancy_Percentage"]["min"]), int(METADATA["Warehouse_Occupancy_Percentage"]["max"]),
-                    value=int(st.session_state.Warehouse_Occupancy_Percentage), disabled=is_disabled, key="Warehouse_Occupancy_Percentage_num")
+                occupancy = st.slider("Warehouse Occupancy (%)", float(METADATA["Warehouse_Occupancy_Percentage"]["min"]), float(METADATA["Warehouse_Occupancy_Percentage"]["max"]),
+                    value=float(st.session_state.Warehouse_Occupancy_Percentage), disabled=is_disabled, key="Warehouse_Occupancy_Percentage_num")
                 st.session_state.Warehouse_Occupancy_Percentage = occupancy
 
+                employees = st.number_input("Employee Count",
+                    min_value=int(METADATA["Employee_Count"]["min"]), max_value=int(METADATA["Employee_Count"]["max"]),
+                    value=int(st.session_state.Employee_Count), step=1, disabled=is_disabled, key="Employee_Count_num")
+                st.session_state.Employee_Count = employees
 
-            with col2:
+                total_awb = st.number_input("Total AWB",
+                    min_value=int(METADATA["Total_AWB"]["min"]), max_value=int(METADATA["Total_AWB"]["max"]),
+                    value=int(st.session_state.Total_AWB), step=1, disabled=is_disabled, key="Total_AWB_num")
+                st.session_state.Total_AWB = total_awb
+
                 shipments = st.number_input("Total Shipments",
                     min_value=int(METADATA["Total_Shipments"]["min"]), max_value=int(METADATA["Total_Shipments"]["max"]),
                     value=int(st.session_state.Total_Shipments), step=1, disabled=is_disabled, key="Total_Shipments_num")
                 st.session_state.Total_Shipments = shipments
-                if inf_mode == "Manual Entry":
-                    st.session_state.Number_of_Flights = max(1, int(shipments // 20))
+
                 cargo_wt = st.number_input("Total Cargo Weight (kg)",
                     min_value=float(METADATA["Total_Cargo_Weight_kg"]["min"]), max_value=float(METADATA["Total_Cargo_Weight_kg"]["max"]),
                     value=float(st.session_state.Total_Cargo_Weight_kg), step=100.0, disabled=is_disabled, key="Total_Cargo_Weight_kg_num")
                 st.session_state.Total_Cargo_Weight_kg = cargo_wt
-                cargo_vol = st.number_input("Total Cargo Volume (m³)",
-                    min_value=float(METADATA["Total_Cargo_Volume_m3"]["min"]), max_value=float(METADATA["Total_Cargo_Volume_m3"]["max"]),
-                    value=float(st.session_state.Total_Cargo_Volume_m3), step=1.0, disabled=is_disabled, key="Total_Cargo_Volume_m3_num")
-                st.session_state.Total_Cargo_Volume_m3 = cargo_vol
-                n_flights = st.session_state.Number_of_Flights
-                forklift_hrs = st.number_input("Forklift Operating Hours",
-                    min_value=float(METADATA["Forklift_Operating_Hours"]["min"]), max_value=float(METADATA["Forklift_Operating_Hours"]["max"]),
-                    value=float(st.session_state.Forklift_Operating_Hours), step=0.1, disabled=is_disabled, key="Forklift_Operating_Hours_num")
-                st.session_state.Forklift_Operating_Hours = forklift_hrs
-                conveyor_hrs = st.number_input("Conveyor Operating Hours",
-                    min_value=float(METADATA["Conveyor_Operating_Hours"]["min"]), max_value=float(METADATA["Conveyor_Operating_Hours"]["max"]),
-                    value=float(st.session_state.Conveyor_Operating_Hours), step=0.1, disabled=is_disabled, key="Conveyor_Operating_Hours_num")
-                st.session_state.Conveyor_Operating_Hours = conveyor_hrs
-                hvac_hrs = st.number_input("HVAC Operating Hours",
-                    min_value=float(METADATA["HVAC_Operating_Hours"]["min"]), max_value=float(METADATA["HVAC_Operating_Hours"]["max"]),
-                    value=float(st.session_state.HVAC_Operating_Hours), step=0.1, disabled=is_disabled, key="HVAC_Operating_Hours_num")
-                st.session_state.HVAC_Operating_Hours = hvac_hrs
-                if inf_mode == "Manual Entry":
-                    st.session_state.Lighting_Operating_Hours = 24.0
-                lighting_hrs = st.session_state.Lighting_Operating_Hours
-                equip_util = st.slider("Equipment Utilization (%)", float(METADATA["Equipment_Utilization_Percentage"]["min"]), float(METADATA["Equipment_Utilization_Percentage"]["max"]),
-                    value=float(st.session_state.Equipment_Utilization_Percentage), disabled=is_disabled, key="Equipment_Utilization_Percentage_num")
-                st.session_state.Equipment_Utilization_Percentage = equip_util
-                staff_count = st.number_input("Staff Count",
-                    min_value=int(METADATA["Staff_Count"]["min"]), max_value=int(METADATA["Staff_Count"]["max"]),
-                    value=int(st.session_state.Staff_Count), step=1, disabled=is_disabled, key="Staff_Count_num")
-                st.session_state.Staff_Count = staff_count
-                staff_avail = st.session_state.Staff_Availability_Percentage
+
+                cargo_vol = st.number_input("Total Cargo Volume (cbm)",
+                    min_value=float(METADATA["Total_Cargo_Volume_cbm"]["min"]), max_value=float(METADATA["Total_Cargo_Volume_cbm"]["max"]),
+                    value=float(st.session_state.Total_Cargo_Volume_cbm), step=1.0, disabled=is_disabled, key="Total_Cargo_Volume_cbm_num")
+                st.session_state.Total_Cargo_Volume_cbm = cargo_vol
+
+            with col2:
+                wooden_pallets = st.number_input("Wooden Pallets Handled",
+                    min_value=int(METADATA["Wooden_Pallets_Handled"]["min"]), max_value=int(METADATA["Wooden_Pallets_Handled"]["max"]),
+                    value=int(st.session_state.Wooden_Pallets_Handled), step=1, disabled=is_disabled, key="Wooden_Pallets_Handled_num")
+                st.session_state.Wooden_Pallets_Handled = wooden_pallets
+
+                plastic_wrap = st.number_input("Plastic Wrapping Used (kg)",
+                    min_value=float(METADATA["Plastic_Wrapping_Used_kg"]["min"]), max_value=float(METADATA["Plastic_Wrapping_Used_kg"]["max"]),
+                    value=float(st.session_state.Plastic_Wrapping_Used_kg), step=1.0, disabled=is_disabled, key="Plastic_Wrapping_Used_kg_num")
+                st.session_state.Plastic_Wrapping_Used_kg = plastic_wrap
+
+                carton_boxes = st.number_input("Carton Boxes Handled",
+                    min_value=int(METADATA["Carton_Boxes_Handled"]["min"]), max_value=int(METADATA["Carton_Boxes_Handled"]["max"]),
+                    value=int(st.session_state.Carton_Boxes_Handled), step=1, disabled=is_disabled, key="Carton_Boxes_Handled_num")
+                st.session_state.Carton_Boxes_Handled = carton_boxes
+
+                stretch_film = st.number_input("Stretch Film Used (kg)",
+                    min_value=float(METADATA["Stretch_Film_Used_kg"]["min"]), max_value=float(METADATA["Stretch_Film_Used_kg"]["max"]),
+                    value=float(st.session_state.Stretch_Film_Used_kg), step=0.5, disabled=is_disabled, key="Stretch_Film_Used_kg_num")
+                st.session_state.Stretch_Film_Used_kg = stretch_film
+
+                damaged_cargo = st.number_input("Damaged Cargo Count",
+                    min_value=int(METADATA["Damaged_Cargo_Count"]["min"]), max_value=int(METADATA["Damaged_Cargo_Count"]["max"]),
+                    value=int(st.session_state.Damaged_Cargo_Count), step=1, disabled=is_disabled, key="Damaged_Cargo_Count_num")
+                st.session_state.Damaged_Cargo_Count = damaged_cargo
+
+                recyclable_pct = st.slider("Recyclable Waste (%)", float(METADATA["Recyclable_Waste_Percentage"]["min"]), float(METADATA["Recyclable_Waste_Percentage"]["max"]),
+                    value=float(st.session_state.Recyclable_Waste_Percentage), disabled=is_disabled, key="Recyclable_Waste_Percentage_num")
+                st.session_state.Recyclable_Waste_Percentage = recyclable_pct
+
                 day_of_week = st.session_state.Day_of_Week
-                weekend = st.session_state.Weekend
                 peak_season = st.session_state.Peak_Season
 
             st.markdown("---")
-            if st.button("Predict Energy Consumption", type="primary", use_container_width=True):
+            if st.button("Predict Waste Generated", type="primary", use_container_width=True):
                 dt = pd.to_datetime(op_date)
                 input_data = {
-                    "Operation_Date": [dt],
-                    "Year": [dt.year],
-                    "Month": [dt.month],
-                    "Quarter": [dt.quarter],
+                    "Date": [dt],
                     "Day_of_Week": [day_of_week],
-                    "Weekend": [weekend],
+                    "Month": [dt.month],
+                    "Year": [dt.year],
+                    "Quarter": [dt.quarter],
                     "Peak_Season": [peak_season],
-                    "Warehouse_ID": [wh_id],
-                    "Warehouse_Type": [wh_type],
-                    "Warehouse_Area_sq_m": [int(wh_area)],
-                    "Temperature_C": [float(temp)],
-                    "Humidity_Percentage": [int(humidity)],
-                    "Weather_Condition": [weather],
-                    "Warehouse_Occupancy_Percentage": [int(occupancy)],
+                    "Warehouse_Zone": [wh_zone],
+                    "Warehouse_Occupancy_Percentage": [float(occupancy)],
+                    "Employee_Count": [int(employees)],
+                    "Total_AWB": [int(total_awb)],
                     "Total_Shipments": [int(shipments)],
                     "Total_Cargo_Weight_kg": [float(cargo_wt)],
-                    "Total_Cargo_Volume_m3": [float(cargo_vol)],
-                    "Number_of_Flights": [int(n_flights)],
-                    "Forklift_Operating_Hours": [float(forklift_hrs)],
-                    "Conveyor_Operating_Hours": [float(conveyor_hrs)],
-                    "HVAC_Operating_Hours": [float(hvac_hrs)],
-                    "Lighting_Operating_Hours": [float(lighting_hrs)],
-                    "Equipment_Utilization_Percentage": [float(equip_util)],
-                    "Staff_Count": [int(staff_count)],
-                    "Staff_Availability_Percentage": [float(staff_avail)],
+                    "Total_Cargo_Volume_cbm": [float(cargo_vol)],
+                    "Wooden_Pallets_Handled": [int(wooden_pallets)],
+                    "Plastic_Wrapping_Used_kg": [float(plastic_wrap)],
+                    "Carton_Boxes_Handled": [int(carton_boxes)],
+                    "Stretch_Film_Used_kg": [float(stretch_film)],
+                    "Damaged_Cargo_Count": [int(damaged_cargo)],
+                    "Recyclable_Waste_Percentage": [float(recyclable_pct)],
                 }
                 input_df = pd.DataFrame(input_data)
 
-                with st.spinner("Estimating energy consumption..."):
-                    try:
-                        predicted_kwh = float(predictor.predict(input_df).values[0])
-                    except ValueError as e:
-                        if "BitGenerator" in str(e):
-                            st.error(
-                                "**Environment mismatch error.** The deployed NumPy version is "
-                                "incompatible with the NumPy version used to train this model.\n\n"
-                                "Fix: pin `numpy<2.0` (matching the training environment) in "
-                                "`requirements.txt` and redeploy / clear the Streamlit Cloud cache."
-                            )
-                            st.stop()
-                        raise
+                with st.spinner("Estimating waste generation..."):
+                    predicted_kg = float(predictor.predict(input_df).values[0])
 
                 col_res1, col_res2, col_res3 = st.columns(3)
-                col_res1.metric("Predicted Energy Consumption", f"{predicted_kwh:.2f} kWh")
-                col_res2.metric("Warehouse", f"{wh_id} ({wh_type})")
-                col_res3.metric("Occupancy", f"{occupancy}%")
+                col_res1.metric("Predicted Waste Generated", f"{predicted_kg:.2f} kg")
+                col_res2.metric("Warehouse Zone", f"{wh_zone}")
+                col_res3.metric("Occupancy", f"{occupancy:.1f}%")
 
 
         # ── Tab 2: Batch CSV Upload ───────────────────────────────────────────
@@ -528,13 +480,13 @@ with tab_pred:
             if os.path.exists(template_path):
                 try:
                     df_template = pd.read_csv(template_path)
-                    if "Energy_Consumption_kWh" in df_template.columns:
-                        df_template = df_template.drop(columns=["Energy_Consumption_kWh"])
+                    if "Waste_Generated_kg" in df_template.columns:
+                        df_template = df_template.drop(columns=["Waste_Generated_kg"])
                     template_csv = df_template.to_csv(index=False).encode("utf-8")
                     st.download_button(
                         label="Download Sample Batch Template CSV",
                         data=template_csv,
-                        file_name="energy_batch_template.csv",
+                        file_name="waste_batch_template.csv",
                         mime="text/csv",
                         help="Use this template to format your warehouse operations data correctly before uploading."
                     )
@@ -549,13 +501,11 @@ with tab_pred:
                     st.write(f"**Uploaded:** `{uploaded_file.name}` | Rows: **{len(df_upload):,}**")
                     
                     REQUIRED_COLS = [
-                        "Operation_Date", "Year", "Month", "Quarter", "Day_of_Week", "Weekend",
-                        "Peak_Season", "Warehouse_ID", "Warehouse_Type", "Warehouse_Area_sq_m",
-                        "Temperature_C", "Humidity_Percentage", "Weather_Condition",
-                        "Warehouse_Occupancy_Percentage", "Total_Shipments", "Total_Cargo_Weight_kg",
-                        "Total_Cargo_Volume_m3", "Number_of_Flights", "Forklift_Operating_Hours",
-                        "Conveyor_Operating_Hours", "HVAC_Operating_Hours", "Lighting_Operating_Hours",
-                        "Equipment_Utilization_Percentage", "Staff_Count", "Staff_Availability_Percentage"
+                        "Date", "Day_of_Week", "Month", "Year", "Quarter", "Peak_Season",
+                        "Warehouse_Zone", "Warehouse_Occupancy_Percentage", "Employee_Count",
+                        "Total_AWB", "Total_Shipments", "Total_Cargo_Weight_kg", "Total_Cargo_Volume_cbm",
+                        "Wooden_Pallets_Handled", "Plastic_Wrapping_Used_kg", "Carton_Boxes_Handled",
+                        "Stretch_Film_Used_kg", "Damaged_Cargo_Count", "Recyclable_Waste_Percentage"
                     ]
                     missing_cols = [c for c in REQUIRED_COLS if c not in df_upload.columns]
                     if missing_cols:
@@ -563,19 +513,16 @@ with tab_pred:
                         st.info("Please ensure your CSV contains all required model features. Use `sample_batch_test.csv` as a template.")
                     else:
                         if st.button("Run Batch Prediction", type="primary", use_container_width=True):
-                            with st.spinner("Estimating energy consumption for all rows..."):
+                            with st.spinner("Estimating waste generation for all rows..."):
                                 df_pred = df_upload.copy()
                                 
-                                num_cols = ["Warehouse_Area_sq_m", "Humidity_Percentage",
-                                            "Warehouse_Occupancy_Percentage", "Total_Shipments",
-                                            "Number_of_Flights", "Staff_Count"]
+                                num_cols = ["Employee_Count", "Total_AWB", "Total_Shipments",
+                                            "Wooden_Pallets_Handled", "Carton_Boxes_Handled", "Damaged_Cargo_Count"]
                                 for col in num_cols:
                                     if col in df_pred.columns:
                                         df_pred[col] = pd.to_numeric(df_pred[col], errors="coerce").fillna(0).astype(int)
-                                float_cols = ["Temperature_C", "Total_Cargo_Weight_kg", "Total_Cargo_Volume_m3",
-                                              "Forklift_Operating_Hours", "Conveyor_Operating_Hours",
-                                              "HVAC_Operating_Hours", "Lighting_Operating_Hours",
-                                              "Equipment_Utilization_Percentage", "Staff_Availability_Percentage"]
+                                float_cols = ["Warehouse_Occupancy_Percentage", "Total_Cargo_Weight_kg", "Total_Cargo_Volume_cbm",
+                                              "Plastic_Wrapping_Used_kg", "Stretch_Film_Used_kg", "Recyclable_Waste_Percentage"]
                                 for col in float_cols:
                                     if col in df_pred.columns:
                                         df_pred[col] = pd.to_numeric(df_pred[col], errors="coerce").astype(float)
@@ -583,20 +530,8 @@ with tab_pred:
                                 for col in df_pred.select_dtypes(include=["object"]).columns:
                                     df_pred[col] = df_pred[col].astype(str).str.strip()
 
-                                try:
-                                    preds = predictor.predict(df_pred).values
-                                except ValueError as e:
-                                    if "BitGenerator" in str(e):
-                                        st.error(
-                                            "**Environment mismatch error.** The deployed NumPy version "
-                                            "is incompatible with the NumPy version used to train this "
-                                            "model.\n\nFix: pin `numpy<2.0` (matching the training "
-                                            "environment) in `requirements.txt` and redeploy / clear the "
-                                            "Streamlit Cloud cache."
-                                        )
-                                        st.stop()
-                                    raise
-                                df_pred["Predicted_Energy_Consumption_kWh"] = np.round(preds, 2)
+                                preds = predictor.predict(df_pred).values
+                                df_pred["Predicted_Waste_Generated_kg"] = np.round(preds, 2)
                                 
                                 st.session_state["batch_results"] = df_pred
 
@@ -604,39 +539,39 @@ with tab_pred:
                         df_res = st.session_state["batch_results"]
                         
                         total    = len(df_res)
-                        avg_pred = float(df_res["Predicted_Energy_Consumption_kWh"].mean())
-                        max_pred = float(df_res["Predicted_Energy_Consumption_kWh"].max())
-                        min_pred = float(df_res["Predicted_Energy_Consumption_kWh"].min())
+                        avg_pred = float(df_res["Predicted_Waste_Generated_kg"].mean())
+                        max_pred = float(df_res["Predicted_Waste_Generated_kg"].max())
+                        min_pred = float(df_res["Predicted_Waste_Generated_kg"].min())
 
                         st.markdown("---")
                         st.markdown("### Prediction Summary")
                         s1, s2, s3, s4 = st.columns(4)
                         s1.metric("Total Records",       f"{total:,}")
-                        s2.metric("Avg Predicted kWh",   f"{avg_pred:.2f}")
-                        s3.metric("Max Predicted kWh",   f"{max_pred:.2f}")
-                        s4.metric("Min Predicted kWh",   f"{min_pred:.2f}")
+                        s2.metric("Avg Predicted kg",    f"{avg_pred:.2f}")
+                        s3.metric("Max Predicted kg",    f"{max_pred:.2f}")
+                        s4.metric("Min Predicted kg",    f"{min_pred:.2f}")
 
                         st.markdown("### Filter & Search Results")
                         fc1 = st.columns(1)[0]
                         with fc1:
                             search_term = st.text_input(
-                                "Search by Warehouse ID",
-                                placeholder="e.g. WH001",
+                                "Search by Warehouse Zone",
+                                placeholder="e.g. General Cargo Warehouse",
                                 key="batch_search"
                             )
                         
                         df_view = df_res.copy()
                         if search_term.strip():
                             term = search_term.strip().lower()
-                            if "Warehouse_ID" in df_view.columns:
-                                df_view = df_view[df_view["Warehouse_ID"].astype(str).str.lower().str.contains(term, na=False)]
+                            if "Warehouse_Zone" in df_view.columns:
+                                df_view = df_view[df_view["Warehouse_Zone"].astype(str).str.lower().str.contains(term, na=False)]
                         
-                        df_view = df_view.sort_values(by="Predicted_Energy_Consumption_kWh", ascending=False)
+                        df_view = df_view.sort_values(by="Predicted_Waste_Generated_kg", ascending=False)
                         
                         st.markdown(f"**Showing {len(df_view):,} of {total:,} records**")
                         
-                        id_cols   = [c for c in ["Warehouse_ID", "Operation_Date"] if c in df_view.columns]
-                        pred_cols = ["Predicted_Energy_Consumption_kWh"]
+                        id_cols   = [c for c in ["Warehouse_Zone", "Date"] if c in df_view.columns]
+                        pred_cols = ["Predicted_Waste_Generated_kg"]
                         other_cols = [c for c in df_view.columns if c not in pred_cols + id_cols]
                         display_cols = pred_cols + id_cols + other_cols
                         
@@ -651,7 +586,7 @@ with tab_pred:
                         st.download_button(
                             label="Download Full Results CSV",
                             data=csv_bytes,
-                            file_name="energy_consumption_predictions.csv",
+                            file_name="waste_generation_predictions.csv",
                             mime="text/csv",
                             use_container_width=True
                         )
